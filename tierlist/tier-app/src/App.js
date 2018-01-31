@@ -1,184 +1,80 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
 import './App.css';
 var groupBy = require('lodash.groupby');
 
-const path = 'http://localhost:4200/api/v1/select'
-
-/*const SORTS = {
-  NONE: list => list,
-  TITLE: list => sortBy(list, 'title'),
-  AUTHOR: list => sortBy(list, 'author'),
-  COMMENTS: list => sortBy(list, 'num_comments').reverse(),
-  POINTS: list => sortBy(list, 'points').reverse(),
-};*/ 
+const path = 'http://localhost:4200/api/v1/select';
 
 const ELEMENTS = ['fire', 'water', 'earth', 'wind', 'light', 'dark']; //need to match actual keys characters have!
+//const GAIJINSTIERS = ['QoL', 'SS', 'S', 'A1', 'A2', 'B', 'C'];
+//const WEAPONS = []
 
-const sortByElement = (list) => {
-  //do stuff
-};
-
-const SORTS = {
-	NONE: list => list,
-  	ELEMENT: list => sortByElement(list),
-};
-const FILTERS = {
-  //NONE: list => list,
-};
-const SOURCES = {
-  GBFGAIJINS: { URL: 'api stuff here'}
-};
-
-const dummyresults = [
-  {
-    name: 'Sturm',
-    url: 'https://gamewith.akamaized.net/article_tools/granbluefantasy/gacha/3114.jpg',
-    element: 'Fire',
-    tier: 9.5,
-    weapon: "Sword",
-    writeup: "sample text",
-  },
-  {
-    name: 'Vane',
-    url: 'https://gamewith.akamaized.net/article_tools/granbluefantasy/gacha/3116.jpg',
-    element: 'Water',
-    tier: 9.0,
-    weapon: "Spear",
-    writeup: "HOI",
-  },
-  {
-    name: 'Uno',
-    url: 'https://gamewith.akamaized.net/article_tools/granbluefantasy/gacha/3116.jpg',
-    element: 'Water',
-    tier: 3.0,
-    weapon: "Spear",
-    writeup: "Uno",
-  },
-  {
-    name: 'Izmir',
-    url: 'https://gamewith.akamaized.net/article_tools/granbluefantasy/gacha/3116.jpg',
-    element: 'Water',
-    tier: 3.0,
-    weapon: "Sword",
-    writeup: "Izmir",
-  },
-  {
-    name: 'WIzmir',
-    url: 'https://gamewith.akamaized.net/article_tools/granbluefantasy/gacha/3116.jpg',
-    element: 'Water',
-    tier: 3.0,
-    weapon: "Sword",
-    writeup: "WIzmir",
-  },
-  {
-    name: 'FIzmir',
-    url: 'https://gamewith.akamaized.net/article_tools/granbluefantasy/gacha/3116.jpg',
-    element: 'Fire',
-    tier: 3.0,
-    weapon: "Sword",
-    writeup: "FIzmir",
-  },
-];
-
-const updateSetTierlistState = (result) => (prevState) => {
-  const { sourceKey, results } = prevState;
-  console.log(results);
-  console.log(result);
-  return {
-    results: { ...results, [sourceKey]: { result } },
-    isLoading: false
-  };
-};
+/*const SOURCES = {
+  GBFGAIJINS: 'url',
+  GAMEWITH : 'url',
+};*/
 
 class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
         isLoading: false,
-        results: [],  
+        result: null,  
         error: null,
 
         popup: false,
         popupResult: null,
         
-        sort: 'ELEMENTS',
-        sortKey: 'ELEMENTS',
+        sorts: [], 
         filters: [],
-        filterKeys: [],
-        source: 'GBFGAIJINS', //selected in ui, becomes sourceKey when submitted
-        sourceKey: 'GBFGAIJINS' //what the tierlist shows
+        source: 'GBFGAIJINS',
+
       };
-      this.onTierlistViewSubmit = this.onTierlistViewSubmit.bind(this);
       this.fetchTierlistResults = this.fetchTierlistResults.bind(this)
-      this.onPopupDismiss = this.onPopupDismiss.bind(this);
-      this.setTierlistResults = this.setTierlistResults.bind(this);
+      //this.onPopupDismiss = this.onPopupDismiss.bind(this);
   }
 
-  //
   componentDidMount() { //setstate which depends on state should maybe be refactored but ...except... only goes once right so no
         const { source } = this.state;
         this.setState({sourceKey: source});
-        this.fetchTierlistResults(source);  //source currently doesn't matter
+        this.fetchTierlistResults; 
     }
 
-  onTierlistViewSubmit(event) {
-    const {source} = this.state;
-    if (!this.state.results[source]){
-      this.setState({sourceKey:source});
-      this.fetchTierlistResults(source);
-    }
-    else{}//do nothing 
-  }
-
-  fetchTierlistResults(tierlist) {
+  fetchTierlistResults() {
     this.setState({ isLoading: true });
     console.log('fetch');
     fetch(path)
     .then(response => response.json())
-    .then(result => this.setTierlistResults(result))
+    .then(result => this.setState({result: result}))
     .catch(e => this.setState({error: e}));
   }
 
-  setTierlistResults(result) {
-    console.log('result');
-    console.log(result);
-    this.setState(updateSetTierlistState(result)); //relies on previous state to know sourceKey, so
-  }
-  onPopupDismiss(event) {}
-
-  //
-
+  //onPopupDismiss(event) {}
 
   render() {
     const {
-        sort, filters, source,
-        results,
-        filterKeys,
-        sourceKey,
-        popup,
-        popupResult,
+        sorts, filters, source,
+        result,
+        popup, popupResult,
         error,
         isLoading,
       } = this.state;
-      console.log('error' + error);
+      //console.log('error' + error);
 
-    const list = (results && results[sourceKey] && results[sourceKey].result) || [];
-    console.log(results);
-    //console.log(list.result);
+    const list = (result) || [];
+    console.log(list);
+    if (list.length == 0 && error!=true){this.setState({error: true});}
+    //console.log(result);
 
     return (
       <div className="page">
 
         <div className="interactions">
-          <Search 
-              //sort = {sort}
+          <SortsFilters
+              sorts = {sorts}
               filters = {filters}
               source = {source}
-              onSubmit={this.onSearchSubmit}
             >
-              Search
-          </Search>
+          </SortsFilters>
         </div>
 
         {error
@@ -186,15 +82,15 @@ class App extends Component {
               <p>Something went wrong.</p>
               </div>
             : <Table 
-                 //sort = {sortKey}         ////{error.toString()}
-                 filters = {filterKeys}
+                 //sorts = {sorts}
+                 filters = {filters}
                  list = {list}
             /> }
 
         {popup &&
 
           <Popup 
-            sourceKey = {sourceKey}
+            source = {source}
             list = {popupResult}
             onDismiss={this.onPopupDismiss}
           /> }
@@ -206,11 +102,15 @@ class App extends Component {
 
 const Loading = () => <div>Loading ...</div>
 
-const Search = ({ sort, filters, source }) => { return(null)} //todo
+const SortsFilters = ({ sorts, filters, source }) => {
+ return (null)
+}
 
 const Table = ({ filters, list }) => { 
         //const filteredList = (list) => filters.reduce( (acc, curr) => {return acc.filter(FILTERS[curr])}, list ); //starting with list, for each filter, remove items from the list
         
+        const columntypes = ELEMENTS;
+
         const columnsobj = {'fire': [], 'water': [], 'earth': [], 'wind': [], 'light': [], 'dark': []}
         //const rowobj = do later, isn't necessary right now.
         const groupList = (list) => {
@@ -224,14 +124,13 @@ const Table = ({ filters, list }) => {
         	return grouped2;
         }
 
-		//console.log("fl:"+ console.log(JSON.stringify(finishedList)));
-        const columntypes = ELEMENTS;				           					       //grouping
+		//console.log("fl:"+ console.log(JSON.stringify(finishedList)));		           					       //grouping
         const column  = {width: (100/columntypes.length)+'%', float: 'left', textAlign: 'center'};
         
         const finishedList = groupList(list);
         //console.log('finshkeys '+ Object.keys(finishedList));
-        const sortedKeys = Object.keys(finishedList); //Object.keys(finishedList).sort(function(a,b){return ELEMENTS.indexOf(a)-ELEMENTS.indexOf(b)})//wasn't immediately necessary  //grouping
-        console.log("sortedKeys" + sortedKeys);
+        const sortedKeys = Object.keys(finishedList); //is sorted so long as columnsobj is sorted
+        //console.log("sortedKeys" + sortedKeys);
         return (
             <div className="table">
 
@@ -258,13 +157,13 @@ const Table = ({ filters, list }) => {
       
 }
 
-const ElementColumn = ({ charactergroups }) => {
-  console.log(charactergroups);
+const ElementColumn = ({ charactergroups }) => { //Not necessarily Element, but historically Element
+  //console.log(charactergroups);
 	return(
 		<div style = {{width: '100%'}}>
-			{Object.keys(charactergroups).map(tier =>		//row: tier
+			{Object.keys(charactergroups).map(row =>
 					<CharactersCellTable
-						characters={charactergroups[tier]} 
+						characters={charactergroups[row]} 
 					>
 					</CharactersCellTable>
 			)}
@@ -273,7 +172,7 @@ const ElementColumn = ({ charactergroups }) => {
 }
 
 const CharactersCellTable = ({ characters }) => { 
-    const base = '' //'https://gbf.wiki/';
+    const base = ''//'https://gbf.wiki/'; //commented out to not strain wiki server for no reason
 	var pairs = [];
 	for(var i = 0; i < characters.length; i += 2){
 	    pairs.push(characters.slice(i, i + 2));
@@ -290,8 +189,8 @@ const CharactersCellTable = ({ characters }) => {
 		</table>
 	)
 }
-
-class Rating extends Component {	//Rating drop-down. Should go in pop-up.
+/*
+class Rating extends Component {	//Rating drop-down (for later)
     constructor(props){
         super(props);
         this.state = {value: '-'};
@@ -316,20 +215,11 @@ class Rating extends Component {	//Rating drop-down. Should go in pop-up.
         );
     }
 }
-
-/*const Popup = ({ sourceKey, props }) => {
-  if(sourceKey == 'GBFGAIJINS'){ return( <GaijinsPopup props={props} /> } //there's a more elegant way to do this, but this is fine for now
-}
-const GaijinsPopup =  ({ props }) => {
-}*/
-
+*/
 const Popup = ({ sourceKey, props }) => {
-  if(sourceKey == 'GBFGAIJINS'){ //there's a more elegant way to do this, but this is fine for now
     return( 
-      {}//popup here
-    )
-   } 
+      null
+    );
 }
-
 
 export default App;
