@@ -4,14 +4,37 @@ var groupBy = require('lodash.groupby');
 
 const path = 'http://localhost:4200/api/v1/select';
 
-const ELEMENTS = ['fire', 'water', 'earth', 'wind', 'light', 'dark']; //need to match actual keys characters have!
+const ELEMENTS = ['fire', 'water', 'earth', 'wind', 'light', 'dark']; //need to match actual values characters have!
 //const GAIJINSTIERS = ['QoL', 'SS', 'S', 'A1', 'A2', 'B', 'C'];
-//const WEAPONS = []
+//const WEAPONS = ['sabre', 'dagger', 'spear', 'axe', 'staff', 'gun', 'melee', 'bow', 'harp', 'katana'];
+const STYLES = ['attack', 'balanced', 'defense', 'heal', 'special',]
+
+const attributes = { //key names need to match character keys
+    //element: ELEMENTS,
+    //weapons: WEAPONS, //characters don't have weapon values atm
+    style: STYLES,
+}
+
+const defaultVal = '-';
+
+const attributeselectionobj = () => {
+    let obj = {};
+    Object.keys(attributes).map(attribute => obj[attribute] = null);
+    return obj;
+}
 
 /*const SOURCES = {
   GBFGAIJINS: 'url',
   GAMEWITH : 'url',
 };*/
+
+
+  const newFilterChoice = (attribute, filterType) => (prevState) => {
+    const { filterStates } = prevState;
+   return(
+        { filterStates: {...filterStates, [filterType]: attribute} } //does filterType evaluate?
+    );
+  }
 
 class App extends Component {
   constructor(props) {
@@ -24,19 +47,26 @@ class App extends Component {
         popup: false,
         popupResult: null,
         
-        sorts: [], 
-        filters: [],
+        sorts: null,
+        filterStates: attributeselectionobj(),
         source: 'GBFGAIJINS',
-
       };
-      this.fetchTierlistResults = this.fetchTierlistResults.bind(this)
+      this.fetchTierlistResults = this.fetchTierlistResults.bind(this);
+      this.updateFilter = this.updateFilter.bind(this);
       //this.onPopupDismiss = this.onPopupDismiss.bind(this);
+  }
+
+  updateFilter(event, filterType) {
+    const attribute = (event.target.value != defaultVal) ? event.target.value : null;
+
+    console.log('UPDATE FILTER');
+    this.setState(newFilterChoice(attribute, filterType));
   }
 
   componentDidMount() { //setstate which depends on state should maybe be refactored but ...except... only goes once right so no
         const { source } = this.state;
         this.setState({sourceKey: source});
-        this.fetchTierlistResults; 
+        this.fetchTierlistResults(); 
     }
 
   fetchTierlistResults() {
@@ -52,7 +82,7 @@ class App extends Component {
 
   render() {
     const {
-        sorts, filters, source,
+        sorts, filterStates, source,
         result,
         popup, popupResult,
         error,
@@ -61,20 +91,23 @@ class App extends Component {
       //console.log('error' + error);
 
     const list = (result) || [];
-    console.log(list);
-    if (list.length == 0 && error!=true){this.setState({error: true});}
+    console.log(result);
+    console.log(error);
+    //if (list.length == 0 && error!=true){this.setState({error: true});}
     //console.log(result);
 
     return (
       <div className="page">
 
         <div className="interactions">
-          <SortsFilters
-              sorts = {sorts}
-              filters = {filters}
-              source = {source}
+        {Object.keys(filterStates).map(filterType => 
+            <Filter
+                filterValue = {filterStates[filterType]}
+                filterType = {filterType}
+                onChange = {(e) => this.updateFilter(e, filterType)}
             >
-          </SortsFilters>
+            </Filter>
+        )}
         </div>
 
         {error
@@ -83,7 +116,7 @@ class App extends Component {
               </div>
             : <Table 
                  //sorts = {sorts}
-                 filters = {filters}
+                 filterStates = {filterStates}
                  list = {list}
             /> }
 
@@ -102,17 +135,46 @@ class App extends Component {
 
 const Loading = () => <div>Loading ...</div>
 
-const SortsFilters = ({ sorts, filters, source }) => {
- return (null)
+const Filter= ({ filterValue, filterType, onChange }) => { 
+    const items = [defaultVal, ...attributes[filterType]];
+    const value = filterValue || defaultVal;
+    console.log(value);
+        return (
+            <select onChange={onChange}>
+                {items.map(item => 
+                    {if(item==filterValue){
+                        return(<option value={item} selected>{item}</option>)
+                    }
+                    else{return(<option value={item}>{item}</option>)}}
+                )}
+              </select>
+        );
 }
 
-const Table = ({ filters, list }) => { 
+const Table = ({ filterStates, list }) => { 
         //const filteredList = (list) => filters.reduce( (acc, curr) => {return acc.filter(FILTERS[curr])}, list ); //starting with list, for each filter, remove items from the list
         
-        const columntypes = ELEMENTS;
+        const columntypes = ELEMENTS;                                                   //grouping
 
         const columnsobj = {'fire': [], 'water': [], 'earth': [], 'wind': [], 'light': [], 'dark': []}
         //const rowobj = do later, isn't necessary right now.
+
+        const filterList = (list) => {
+            const filtered = 
+                list.filter(function(character){
+                    let val=
+                    Object.keys(filterStates).every(function(attrName){
+                        console.log(character[attrName]);
+                        console.log(filterStates[attrName]);
+                        let val =((!filterStates[attrName])) || character[attrName].includes(filterStates[attrName]);
+                        return val;
+                        });
+                    return val;
+                }
+                )
+            return filtered;
+        }
+
         const groupList = (list) => {
         	let grouped2 = {};
         	let grouped1 = groupBy(list, chara => chara.element);				      //grouping
@@ -124,10 +186,12 @@ const Table = ({ filters, list }) => {
         	return grouped2;
         }
 
-		//console.log("fl:"+ console.log(JSON.stringify(finishedList)));		           					       //grouping
+		//console.log("fl:"+ console.log(JSON.stringify(finishedList)));		           					       
         const column  = {width: (100/columntypes.length)+'%', float: 'left', textAlign: 'center'};
         
-        const finishedList = groupList(list);
+        const filteredList = filterList(list);
+        console.log(filteredList);
+        const finishedList = groupList(filteredList);
         //console.log('finshkeys '+ Object.keys(finishedList));
         const sortedKeys = Object.keys(finishedList); //is sorted so long as columnsobj is sorted
         //console.log("sortedKeys" + sortedKeys);
@@ -172,6 +236,7 @@ const ElementColumn = ({ charactergroups }) => { //Not necessarily Element, but 
 }
 
 const CharactersCellTable = ({ characters }) => { 
+    console.log(characters);
     const base = ''//'https://gbf.wiki/'; //commented out to not strain wiki server for no reason
 	var pairs = [];
 	for(var i = 0; i < characters.length; i += 2){

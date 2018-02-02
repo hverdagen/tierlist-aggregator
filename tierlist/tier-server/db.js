@@ -39,11 +39,14 @@ const scrapeAndInsert = () =>{
 //test database
 
 function select(){
-    let sql = `SELECT id id,
+    console.log('select');
+    /*let sql = `SELECT id id,
                       name name,
                       element element,
+                      weapons weapons,
                       imgurl imgurl
-                FROM characterinfo`;
+                FROM characterinfo`;*/
+    let sql = `SELECT * FROM characterinfo`;
 
     let list = [];
 
