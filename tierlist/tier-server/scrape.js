@@ -7,7 +7,7 @@ var db = require('./db');
 const imghash = require('imghash');
 const hamming = require('hamming-distance');
 
-const scrape = (callback) => {
+const scrape = (callback) => {  //scrape the wiki tracker
     url = 'https://gbf.wiki/Collection_Tracker';
     let characters = [];
 
@@ -21,10 +21,10 @@ const scrape = (callback) => {
                     if (isCharacter){
                         let character = {
                                 id: $(this).attr('data-short_id'),
-                                longId: $(this).attr('data-id'),
+                                longid: $(this).attr('data-id'),
                                 name: $(this).attr('data-name'),
                                 element: $(this).attr('data-element'),
-                                weapons: $(this).attr('data-weapons'),
+                                weapons: $(this).attr('data-weapon'),
                                 style: $(this).attr('data-style'),
                                 rarity: $(this).attr('data-rarity'),
                                 race: $(this).attr('data-race'),
@@ -32,11 +32,13 @@ const scrape = (callback) => {
                                 obtain: $(this).attr('data-obtain'),
                                 imgurl: $(this).children().first().children().first().attr('src'),
                             };
-                        //console.log(character);
+                        console.log(character);
                         characters.push(character);
                     }
             });
+            callback(characters);
             //db.insertFromWiki(characters);
+            //db.updateFromWiki(characters, 'weapons');
             //console.log(characters);
         }
 
@@ -44,11 +46,10 @@ const scrape = (callback) => {
     });
 }
 
-async function GWtoHashDict(){
+async function GWtoHashDict(){ //convert imgurls and ratings to a dictionary with phashes as key and tier as value
     let tierimgs = await scrapeGameWith();
 
     return new Promise((resolve, reject) => {
-
         
         let hashTierDict = {};
 
@@ -58,7 +59,7 @@ async function GWtoHashDict(){
             console.log('insert')
             let options = {
               url: '',
-              encoding: null, //tells request to give a buffer, not a string
+              encoding: null, //tells request to return a buffer, not a string
             };
             options.url = element.imgurl;
             request(options, function(err, res, body){
@@ -67,6 +68,7 @@ async function GWtoHashDict(){
                     //console.log(body);
                     imghash.hash(body).then(function(value) {
                         hashTierDict[value]=element.tier;
+                        //if(value=='f680c2cad8985866'){console.log(element.imgurl);}
                         //console.log(value);
                         i++; //console.log(i);
                         if (i == tierimgs.length)
@@ -131,6 +133,7 @@ async function matchImages(){
 
     let tHashClosestDict = {}; //for each tHash, its closest distance thus far
     let tierIDDict = {};
+
     tierhashes.forEach(function(tHash){
 
         var distances = IDhashes.map(IDHash => hamming(tHash, IDHash));
@@ -138,7 +141,10 @@ async function matchImages(){
         var minDistHash = IDhashes[minDistIndex];
         var shortest = distances[minDistIndex];
 
-        if(!tHashClosestDict[tHash] || shortest<tHashClosestDict[tHash]){ //if nothing else has been matched to the tHash or if the previous match was a poorer match
+        let isDecentMatch = shortest<10; 
+        let noPreviousMatch = !tHashClosestDict[tHash];
+        let isShortestMatch = (x) => x<tHashClosestDict[tHash];
+        if(isDecentMatch &&(noPreviousMatch || isShortestMatch(shortest))){
             tHashClosestDict[tHash] = shortest;
 
             var ID = hashIDDict[minDistHash];
@@ -146,9 +152,8 @@ async function matchImages(){
             tierIDDict[ID] = tier;
         }
     });
-    console.log(tierIDDict);
-    
-        //GW specific
+    //console.log(tierIDDict);
+    console.log(tHashClosestDict);
 }
 
 
@@ -161,5 +166,9 @@ async function matchImages(){
 //matchImages();
 //getHashIDDict();
 
+//matchImages();
+
 //rint();
 //GWtoHashDict();
+//let empty = () => {};
+//scrape(empty);
