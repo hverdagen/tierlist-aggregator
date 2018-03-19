@@ -194,7 +194,7 @@ class App extends Component {
 const Loading = () => <div>Loading ...</div>
 
 const Filter = ({ filterValue, filterType, onChange }) => {
-    const items = [defaultVal, ...attributes[filterType]];
+    const items = attributes[filterType];
     const value = filterValue || defaultVal;
     console.log('filter: items');
     console.log(items);
@@ -249,10 +249,11 @@ const Table = ({ filterStates, list, source }) => {
                 )
             return filtered;
         }
-
+/*
         const tierNumbersOnly = (groupings) =>
         {
             let keys = Object.keys(groupings);
+            console.log('keys');
             console.log(keys);
             for (var i = keys.length - 1; i >= 0; i--) {
                 if (isNaN(keys[i])){delete groupings[keys[i]];}
@@ -260,10 +261,33 @@ const Table = ({ filterStates, list, source }) => {
             console.log(Object.keys(groupings));
             return groupings;
         }
+*/
+        const groupNumbersOnly = (charaArr) => {
+            let grouped = {};
+            for (var i = charaArr.length - 1; i >= 0; i--) {
+                let chara = charaArr[i];
+                let charaTier = chara[source.name];
+                if(charaTier in grouped){
+                    grouped[charaTier].push(chara);
+                }
+                else{
+                    if( !charaTier || isNaN(charaTier)){}//do nothing
+                    else{grouped[charaTier]=[chara];}
+                }
+            }   
+            console.log('grouped');
+            console.log(grouped);
+            return grouped;
+        }
 
         const groupByTier = (charaArr) => {
             if(source){
-                return tierNumbersOnly(groupBy(charaArr, chara => chara[source.name]));
+                //let numsOnly = tierNumbersOnly(charaArr);
+                //let grouped = groupBy(numsOnly, chara => chara[source.name]);
+                let grouped = groupNumbersOnly(charaArr);
+                return grouped;
+                //let groupings = groupBy(charaArr, chara => chara[source.name]);
+                //return tierNumbersOnly(groupings);
                 }          //grouping
             else{ return groupBy(charaArr, chara => chara['-']);} //we assume no characters have this value.
         }
@@ -277,6 +301,17 @@ const Table = ({ filterStates, list, source }) => {
 			    var charaArr = grouped1[objectKey];
                 grouped2[objectKey] =  groupByTier(charaArr);                        //grouping
             });
+
+            //remove any element that isn't a main element (eg. lyria) if theres nothing of that element
+            //(this could be avoided in the future by refactoring so filtering out characters is done before grouping)
+            /* //filter out anything that doesnt exist
+            let keys = Object.keys(grouped2);
+            for (var i = keys.length - 1; i >= 0; i--) {
+                let key = keys[i];
+                if(Object.keys(grouped2[key]).length == 0){ delete grouped2[key];}
+            }*/
+            if (grouped2['any'] && (Object.keys(grouped2['any']).length == 0)){delete grouped2['any']} //if any ele exists but has nothing in it, delete it
+
         	return grouped2;
         }
 
@@ -285,7 +320,9 @@ const Table = ({ filterStates, list, source }) => {
             let heights = {};
             Object.keys(finishedList).forEach(function(elegroup){
                 Object.keys(finishedList[elegroup]).forEach(function(tiergroup){
-                    let len = finishedList[elegroup][tiergroup].length;
+                    let len = 0;
+                    if(finishedList[elegroup][tiergroup]){len = finishedList[elegroup][tiergroup].length;}//else do nothing
+                    if (elegroup=='fire'){len++;}                                    //warning: hardcoding, refactor later
                     //console.log(elegroup + ' ' + tiergroup + ' ' + len)
                     if (!heights[tiergroup]) {heights[tiergroup] = len;}
                     else{
@@ -294,12 +331,12 @@ const Table = ({ filterStates, list, source }) => {
                     }
                 });
             });
-            //console.log(heights);
+            console.log(heights);
             return heights;
         }
         const addEmptyTierRows = (tierHeights, finishedList) =>{
              Object.keys(finishedList).forEach(function(elegroup){
-                //if(elegroup!='any'){ // this is "arbitrary". it's not one of the big 6 elements, so it's off by itself and looks bad with the extra height.
+                //if(elegroup!='any'){ // this is "arbitrary": it's not one of the big 6 elements, so it's off by itself and looks bad with the extra height.
                 Object.keys(tierHeights).forEach(function(tier){
                     if(!finishedList[elegroup][tier]){finishedList[elegroup][tier]={};}
                     else{}//nothing
@@ -375,7 +412,7 @@ const ElementColumn = ({ color, index, charactergroups, colrowmaxsize }) => { //
 					<CharactersCellTable
                         index = {index}
                         label = {row}
-						characters={charactergroups[row]} 
+						characters={charactergroups[row]}
                         maxcharacters={maxcharas(row)}
 					>
 					</CharactersCellTable>
@@ -385,6 +422,7 @@ const ElementColumn = ({ color, index, charactergroups, colrowmaxsize }) => { //
 }
 
 const CharactersCellTable = ({ index, label, characters, maxcharacters }) => { 
+    //maxcharacters = maxcharacters+1; //accounting for tier label space takes up //nvm, changed it to compensate earlier
     console.log(characters);
     let pairBeginIndex = 0;
     let pairs = [];
@@ -393,24 +431,28 @@ const CharactersCellTable = ({ index, label, characters, maxcharacters }) => {
         pairBeginIndex = 1;
     }
     //console.log(pairs[0][0]);
-	for(var i = pairBeginIndex; i < characters.length; i += 2){ //i is 1
-	    pairs.push(characters.slice(i, i + 2));
+	for(var i = pairBeginIndex; i < characters.length; i += 2){
+        if (i+1,characters.length-1){ //if the next item index is within the bounds of the array
+	       pairs.push(characters.slice(i, i + 2));}
+        else{
+            pairs.push([characters[i], {}]);
+        }
 	}
 
     while (pairs.length<Math.ceil(maxcharacters/2)){pairs.push([{}, {}]);}
     let style = {width: "100%"};
-
+    console.log('pairs'); console.log(pairs);
     /*if (maxcharacters){
         let rows = Math.ceil(maxcharacters/2);
         let height = rows * 50;
         console.log(height);
         console.log(maxcharacters);
         style['height'] = height; 
-    }*/
+    }*/ //style={{display: "block"}}
 	return(
 		<table style={style}>
        		{pairs.map(pair =>
-                <tr style={{display: "block"}}>
+                <tr >
                 	{pair.map(character =>
 	                   <CharacterCell
                        character = {character}
@@ -423,13 +465,13 @@ const CharactersCellTable = ({ index, label, characters, maxcharacters }) => {
 	);
 }
 const CharacterCell = ({ character }) => { 
-    if(character && character.id){return (<th><img src={imagepath(character.id)} alt={character.name} style={{width: "100%", display: "block", width: "70.4px", height: "39.7px"}}></img></th>);} //hardcoding- fix later
+    if(character && character.id){return (<th style={{width: "50%"}}><img src={imagepath(character.id)} alt={character.name} style={{width: "100%", display: "block"}}></img></th>);} //hardcoding- fix later
     else{
-        if(character && character.label){ 
-            return(<th><div style={{width: "100%", display: "block", width: "70.4px", height: "39.7px",  color: "#ffffff", backgroundColor: "#424242"}}>{character.label}</div></th>);
+        if(character && character.label){ //tier label
+            return(<th style={{width: "50%"}}><div style={{width: "100%", display: "block", color: "#ffffff", backgroundColor: "#424242"}}>{character.label}</div></th>);
         }
-        else{
-            return (<th><div style={{width: "100%", display: "block", width: "70.4px", height: "39.7px"}}></div></th>);
+        else{ //filler (empty)
+            return (<th><div style={{width: "50%", display: "block", paddingBottom: "57%"}}></div></th>); //57% comes from what we know is the ratio of image width to height.
         }
     }
 }
