@@ -1,65 +1,59 @@
 // app.js
 var scrape = require('./scrape');
-const sqlite3 = require('sqlite3').verbose();
-
-//for api
 var express = require('express');
+const sqlite3 = require('sqlite3').verbose();
 var cors = require('cors');
+const imageType = require('image-type');
 
-const imghash = require('imghash'); //for finding hash based on image
+const imghash = require('imghash');
 
-var fs = require('fs'); //for accessing filesystem (for images)
-var request = require('request'); //for downloading images
+//convert images
+var fs = require('fs');
+var request = require('request');
+/*
+let db = new sqlite3.Database('./database.db', (err) => {
+    if (err) {
+      console.error(err.message);
+    }
+    console.log('Connected to the database.');
+  });*/
 
-//currently only the select functions are used by the API, the rest are/were run manually.
-function selectfrom(tablename){
-    let sql = `SELECT * FROM ` + tablename;
-    return new Promise((resolve, reject) => {
-
-      let db = new sqlite3.Database('./database.db', (err) => {
-        if (err) {
-          console.error(err.message);
-          return reject(err);
-        }
-        else{
-          db.all(sql, [], (err, allRows) => {
-            if (err) {
-              return reject(err);
-            }
-            for (var i = allRows.length - 1; i >= 0; i--) {
-                //console.log(allRows[i]);
-                if(!allRows[i].weapons){console.log(allRows[i]);}
-            }
-            resolve(allRows);
-          });
-        } 
-    });
-  });
-}
-
-function selectcharacters(){ //all characters from characterinfo
-  return selectfrom('characterinfo');
-}
-
-function selecthashes(){ //all id,hash es from characterphashes table
-  return selectfrom('characterphashes');
-}
-
-const modifyDB = (sql) =>{
+const modifyDB = () =>{
     let db = new sqlite3.Database('./database.db', (err) => {
     if (err) {
       console.error(err.message);
     }
     else{ console.log('Connected to the database.'); 
-      db.run(sql);
-    }
-    });
-}
-let createCharInfoTableSQL = 'CREATE TABLE characterinfo(id INTEGER PRIMARY KEY, longid INTEGER, name TEXT, element TEXT, weapons TEXT, style TEXT, rarity TEXT, race TEXT, gender TEXT, obtain TEXT, imgurl TEXT';
-let createCharPHashTableSQL = 'CREATE TABLE characterphashes(id INTEGER PRIMARY KEY, hash TEXT';
-//modifyDB();
+         //db.run('CREATE TABLE characterphashes(id INTEGER PRIMARY KEY, hash TEXT)');
 
-const getImages = (idArrOrNull) =>{//Download images to directory using the imgurl field of characterinfo table. Either all images if given null or specified ids if given an array.
+         //db.run('ALTER TABLE characterinfo ADD GameWith TEXT');
+         /*
+         let sql = 
+            `UPDATE characterinfo
+             SET GameWith = (SELECT rating
+                       FROM GWtier
+                       WHERE id = characterinfo.id)`
+
+              db.run(sql, [], function(err) {
+                if (err) {
+                  return console.error(err.message);
+              }
+                console.log(`Rows inserted ${this.changes}`);
+              });
+               */        
+        }
+
+    });
+    //db.run('CREATE TABLE characterinfo(id INTEGER PRIMARY KEY, longid INTEGER, name TEXT, element TEXT, weapons TEXT, style TEXT, rarity TEXT, race TEXT, gender TEXT, obtain TEXT, imgurl TEXT)');
+    //db.run('CREATE TABLE characterinfo(id INTEGER PRIMARY KEY, rating REAL)'); //don't yet run
+    //db.run('CREATE TABLE characterphashes(id INTEGER PRIMARY KEY, hash TEXT');
+    //db.run('CREATE TABLE GWtier(id INTEGER PRIMARY KEY, rating TEXT)');
+    //db.run('CREATE TABLE GGtier(id INTEGER PRIMARY KEY, rating REAL)'); //should maybe contain more info- descriptions etc? ehhhh
+    //db.run('DROP TABLE GWtier');
+
+}
+
+const getImages = (idArrOrNull) =>{//download images to directory using the imgurl field of characterinfo table. either all images if given null or specified ids if given an array.
 
   var download = function(uri, filename, callback){
     request.head(uri, function(err, res, body){
@@ -91,7 +85,7 @@ const getImages = (idArrOrNull) =>{//Download images to directory using the imgu
     let path = './images/'+row.id;
     console.log(row.name);
     console.log(row.imgurl)
-    //if (!fs.existsSync(path)){ //if not wanting to overwrite
+    //if (!fs.existsSync(path)){
       download(base+row.imgurl, path, function(){console.log(row.id);});
     }
     //}
@@ -100,12 +94,12 @@ const getImages = (idArrOrNull) =>{//Download images to directory using the imgu
   
 }
 
-const fixImagesfromDir = () =>{ //Checks that image files are valid and if not redownloads them using getImages.
-    //Maybe not the most expedient way of doing this- error checking comes from copying the part that produces an error in index.js of imghash module.
+const fixImagesfromDir = () =>{ //checks that image files are valid and if not redownloads them using getImages.
+    //maybe not the most expedient way of doing this- I copied the part that produces an error in index.js of imghash module.
    fs.readdirSync('./images/').forEach(file => {
         let filepath = ('./images/'+file);
         if(!filepath.endsWith('.jpg')){
-            let newfilepath = filepath+'.jpg';
+            let newfilepath = './images/'+file+'.jpg';
             fs.renameSync(filepath, newfilepath);
             filepath=newfilepath;
         }
@@ -124,7 +118,7 @@ const fixImagesfromDir = () =>{ //Checks that image files are valid and if not r
                 }
             }
             catch(err){
-                let missedID = file.slice(0,-4); //because '.jpg' is characters 
+                let missedID = file.slice(0,-4);//.slice(0,-4)
                 console.log(missedID);
                 getImages([missedID]);
             }
@@ -133,6 +127,7 @@ const fixImagesfromDir = () =>{ //Checks that image files are valid and if not r
 }
 
 const insert = (items, tablestr) =>{
+      //construct the insert statement with multiple sets (in parentheses) of values
       let db = new sqlite3.Database('./database.db', (err) => {
         if (err) {console.error(err.message);}
         else{
@@ -152,39 +147,61 @@ const insert = (items, tablestr) =>{
 const insertFromWiki = (items) =>{ //given items gotten from scraping wiki, insert them.
     insert(items, 'characterinfo');
 }
-
-const updateFromWiki = (characters, attrColName) =>{ //assumes key in character objects is the same as the column to update's name
-  console.log(attrColName);
-  let len = characters.length;
-  console.log(characters);
-    let db = new sqlite3.Database('./database.db', (err) => {
-        if (err) {console.error(err.message);}
-        else{
-          for (var i = 0; i < len; i++) {
-          console.log(attrColName);
-          console.log(i);
-          let character = characters[i];
-          console.log(character);
-          let sql= `UPDATE characterinfo SET ` +attrColName+ ` = '` +character[attrColName]+ `' WHERE id = ` +character.id;
-          console.log(sql);
-            db.run(sql, [], function(err) {
-                  console.log(sql);
-                  if (err) {return console.error(err.message); characters.push(character); len++;} //definitely not the fastest way to handle this, but there's no need for it to be efficient
-                  else{console.log(`Rows inserted ${this.changes}`)};
-            });
-          }
-      }
+/* deprecated
+const insertGWTiers = (IDTierDict) =>{ //IDTierDict eg {'4149': '9.5', '4148': '9.0'}
+    //Tier takes text (as the GG table will need to take text anyways. Best to be consistent.) Filtering out non-numbers should be done on the frontend
+    let items = Object.keys(IDTierDict).map(function(key, index){
+        return {id: parseInt(key, 10), tier: IDTierDict[key]};
     });
-  
+    insert(items, 'GWtier');
+}*/
+
+function selectfrom(tablename){
+    let sql = `SELECT * FROM ` + tablename;
+    //let sql = `SELECT * FROM characterinfo`;
+    return new Promise((resolve, reject) => {
+
+      let db = new sqlite3.Database('./database.db', (err) => {
+        if (err) {
+          console.error(err.message);
+          return reject(err);
+        }
+        else{
+          db.all(sql, [], (err, allRows) => {
+            if (err) {
+              return reject(err);
+            }
+            for (var i = allRows.length - 1; i >= 0; i--) {
+                console.log(allRows[i]);
+            }
+            resolve(allRows);
+          });
+        } 
+    });
+  });
 }
 
+function selectcharacters(){ //all characters from characterinfo
+  return selectfrom('characterinfo');
+}
+
+function selecthashes(){ //all id,hash es from characterphashes table
+  return selectfrom('characterphashes');
+}
+/*deprecated
+function selectGWtier(){ //all id,tier s from GWtier table
+  return selectfrom('GWtier');
+}
+*/
 function insertHashesFromFileSystemImgs(){
   let db = new sqlite3.Database('./database.db', (err) => {
         if (err) {
           console.error(err.message);
         }
         else{
-            //images at './images/'+row.id;... so for each image take the name of the image, which is its id, and then pair ids and hashes
+            //images at './images/'+row.id;... so for ech image take the name of the image, which is its id, and then
+            //pair ids and hashes
+
             idHashDict = {};
             fs.readdirSync('./images/').forEach(file => {
               let id = file.slice(0, -4); // .jpg is characters 
@@ -214,12 +231,28 @@ function insertHashesFromFileSystemImgs(){
   });
 }
 
+//selectTest(console.log);
+/*
+module.exports = 
+{
+  select: select(),
+};*/
+
 var port = 4200;
 
 var app = express();
 app.use(cors());
 
 var router = express.Router();
+/*
+router.get('/', function(req, res) { 
+  console.log("get");
+    const callback = (result) => { 
+      //console.log(result); 
+      res.json(result);
+    }
+    selectReturn(callback);
+});*/
 
 router.route('/characters')
   .get(async function(req, res) {
@@ -255,8 +288,14 @@ app.use('/api/v1', router);
 
 app.listen(port);
 
-module.exports = { selecthashes, updateFromWiki, insertFromWiki };
+module.exports = { selecthashes };
 
+//getImages();
+//fixImagesfromDir();
+
+//createDB();
+
+//insertHashesFromFileSystemImgs();
 /*
 async function testawaithashes(){
     let h = await selecthashes();
@@ -264,4 +303,6 @@ async function testawaithashes(){
 }
 testawaithashes();
 */
-//console.log('done');
+//modifyDB();
+
+//selecthashes();
