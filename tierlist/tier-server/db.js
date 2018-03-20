@@ -257,10 +257,11 @@ app.listen(port);
 
 module.exports = { selecthashes, updateFromWiki, insertFromWiki };
 
+/*
 async function testawaithashes(){
     let h = await selecthashes();
     console.log(h);
 }
 testawaithashes();
-
-console.log('done');
+*/
+//console.log('done');
