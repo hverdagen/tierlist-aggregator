@@ -143,7 +143,7 @@ class App extends Component {
         <div className="interactions">
 
         {
-        Object.keys(filterStates).map(filterType => 
+        Object.keys(filterStates).map(filterType =>
             <Filter
                 filterValue = {filterStates[filterType]}
                 filterType = {filterType}
@@ -214,8 +214,13 @@ const DropDown = ({items, currentItem, onChange}) => {
     console.log(items);
     //items = [];
     items = [defaultVal, ...items];
+    function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+    //items = items.map(i => capitalizeFirstLetter(i));
     return(
-        <select onChange={onChange}>
+        <select onChange={onChange}
+                style = {{margin: '5px'}}> 
             {items.map(item => 
                 {if(item==currentItem){
                     return (<option value={item} selected>{item}</option>);}
@@ -347,7 +352,7 @@ const Table = ({ filterStates, list, source }) => {
         }
 
 		//console.log("fl:"+ console.log(JSON.stringify(finishedList)));		           					       
-        const column  = {width: (100/columntypes.length)+'%', float: 'left', textAlign: 'center'};
+        const column  = {width: (100/columntypes.length)+'%', float: 'left', textAlign: 'center', };
         
         const filteredList = filterList(list);
         //console.log(filteredList);
@@ -372,7 +377,7 @@ const Table = ({ filterStates, list, source }) => {
                <div className="table-header">
                		{columntypes.map(col =>
                         <div style={column}>
-                          	{col}{/*put an image here later*/}
+                            <img src={""+col+".png"} alt={col} style={{width:'20%'}}></img>
                         </div>)}
                 </div>
 
@@ -406,7 +411,7 @@ const ElementColumn = ({ color, index, charactergroups, colrowmaxsize }) => { //
   console.log(colrowmaxsize);
 	return(
 		<div className = {'element-column'}
-             style = {{backgroundColor: color}}
+             style = {{backgroundColor: color,}}
          >{/*style = {{width: '100%'}}>*/}
 			{sortedKeys.map(row =>
 					<CharactersCellTable
@@ -440,9 +445,9 @@ const CharactersCellTable = ({ index, label, characters, maxcharacters }) => {
 	}
 
     while (pairs.length<Math.ceil(maxcharacters/2)){pairs.push([{}, {}]);}
-    let style = {width: "100%"};
+    let style = {padding: '10px',  width: '100%'};
     console.log('pairs'); console.log(pairs);
-    /*if (maxcharacters){
+    /*if (maxcharacters){                           border: '1px solid black',
         let rows = Math.ceil(maxcharacters/2);
         let height = rows * 50;
         console.log(height);
